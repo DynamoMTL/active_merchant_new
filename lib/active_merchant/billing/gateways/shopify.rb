@@ -1,3 +1,5 @@
+require 'shopify_api'
+
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     class ShopifyGateway < Gateway
@@ -51,7 +53,8 @@ class ShopifyVoider
   end
 
   def perform
-    raise TransactionNotFoundError if transaction.nil?
+    raise ActiveMerchant::Billing::ShopifyGateway::TransactionNotFoundError if transaction.nil?
+
 
     transaction.kind = 'void'
     transaction.save
