@@ -7,7 +7,9 @@ module ActiveMerchant #:nodoc:
       self.display_name = 'Shopify'
 
       def initialize(options = {})
-        requires!(options, :login)
+        requires!(options, :api_key)
+        requires!(options, :password)
+        requires!(options, :shop_name)
         @api_key = options[:api_key]
         @password = options[:password]
         @shop_name = options[:shop_name]
