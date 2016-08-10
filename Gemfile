@@ -1,4 +1,9 @@
 source 'https://rubygems.org'
+
+group :test, :remote_test do
+  gem 'pry-rails'
+end
+
 gemspec
 
 gem 'jruby-openssl', :platforms => :jruby
