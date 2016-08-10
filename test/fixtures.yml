@@ -944,9 +944,9 @@ spreedly_core:
 
 # Replace with your own credentials
 shopify:
-  api_key: "d5719fb9c960c45ad1418675b9c725c4"
-  password: "4ac8651236acbd5e5ffccc8c5458c4df"
-  shop_name: "dynamo-staging.myshopify.com/admin"
+  api_key: "use"
+  password: "your"
+  shop_name: "own"
 
 # Working credentials, no need to replace
 stripe:

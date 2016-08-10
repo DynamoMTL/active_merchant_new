@@ -7,6 +7,17 @@ class ShopifyTest < Test::Unit::TestCase
                                   shop_name: 'shop_name')
   end
 
+  def test_void_calls_refund
+    transaction_id = 123
+    transaction = stub(amount: 1, id: transaction_id)
+    refunder_instance = stub(perform: true)
+    ::ShopifyAPI::Transaction.expects(:find).returns(transaction)
+    ShopifyRefunder.expects(:new).returns(refunder_instance)
+
+    refunder_instance.expects(:perform).once
+    @gateway.void(123, { order_id: '123' })
+  end
+
   def test_void_with_not_found_transaction
     ::ShopifyAPI::Transaction.expects(:find).returns(nil)
     assert_raises(::ActiveMerchant::Billing::ShopifyGateway::TransactionNotFoundError) { @gateway.void(123, order_id: '123') }

@@ -9,15 +9,26 @@ class RemoteStripeTest < Test::Unit::TestCase
     @order = create_fulfilled_paid_shopify_order
     @transaction = ::ShopifyAPI::Order.find(@order.id).transactions.first
 
-    @options = { order_id: @order.id, reason: 'Object is malfunctioning' }
+    @refund_options = { order_id: @order.id, reason: 'Object is malfunctioning' }
+    @void_options = { order_id: @order.id, reason: 'Payment voided' }
   end
 
   def teardown
     @order.destroy
   end
 
+  def test_successful_void
+    assert response = @gateway.void(@transaction.id, @void_options)
+    assert_success response
+  end
+
   def test_successful_full_refund
-    assert response = @gateway.refund(@refund_amount_in_cents, @transaction.id, @options)
+    assert response = @gateway.refund(@refund_amount_in_cents, @transaction.id, @refund_options)
+    assert_success response
+  end
+
+  def test_successful_partial_refund
+    assert response = @gateway.refund(@refund_amount_in_cents / 2, @transaction.id, @refund_options)
     assert_success response
   end
 
