@@ -74,10 +74,12 @@ class ShopifyRefunder
   end
 
   def perform
+    # NOTE(cab): This should be refactored when we are sure that this is the
+    # behavior we want
     if full_refund?
-      perform_full_refund_on_shopify
+      perform_refund_on_shopify
     elsif partial_refund?
-      raise NotImplementedError
+      perform_refund_on_shopify
     else
       raise NotImplementedError
     end
@@ -85,18 +87,18 @@ class ShopifyRefunder
 
   private
 
-  def perform_full_refund_on_shopify
+  def perform_refund_on_shopify
     ::ShopifyAPI::Refund.create(order_id: order_id,
-                                shipping: { full_refund: true },
+                                shipping: { amount: 0 },
                                 note: refund_reason,
                                 notify: false,
                                 restock: false,
-                                transaction: suggested_transaction)
-  end
-
-  def suggested_transaction
-    ::ShopifyAPI::Refund.calculate(shipping: { amount: credited_money },
-                                   params: { order_id: order_id })
+                                transactions: [{
+                                  parent_id: transaction.id,
+                                  amount: @credited_money,
+                                  gateway: 'shopify-payments',
+                                  kind: 'refund'
+                                }])
   end
 
   def full_refund?
@@ -108,7 +110,7 @@ class ShopifyRefunder
   end
 
   def amount_to_cents(amount)
-    BigDecimal.new(amount) * 100
+    BigDecimal.new(amount)
   end
 
   attr_accessor :credited_money, :refund_reason, :transaction, :order_id

@@ -4,9 +4,9 @@ class RemoteStripeTest < Test::Unit::TestCase
   def setup
     @gateway = ShopifyGateway.new(fixtures(:shopify))
 
-    @order = create_shopify_order
+    @refund_amount = 50
+    @order = create_fulfilled_paid_shopify_order
     @transaction = ::ShopifyAPI::Order.find(@order.id).transactions.first
-    @amount = BigDecimal.new(@transaction.amount) * 100
 
     @options = { order_id: @order.id, reason: 'Object is malfunctioning' }
   end
@@ -16,22 +16,23 @@ class RemoteStripeTest < Test::Unit::TestCase
   end
 
   def test_successful_full_refund
-    assert response = @gateway.refund(@amount, @transaction.id, @options)
+    assert response = @gateway.refund(@refund_amount, @transaction.id, @options)
     assert_success response
   end
 
   private
 
-  def create_shopify_order
+  def create_fulfilled_paid_shopify_order
     order = ::ShopifyAPI::Order.new
     order.email = 'cab@godynamo.com'
-    order.fulfillment_status = 'partial'
+    order.test = true
+    order.fulfillment_status = 'fulfilled'
     order.line_items = [
       {
         variant_id: '447654529',
         quantity: 1,
         name: 'test',
-        price: 140,
+        price: @refund_amount,
         title: 'title'
       }
     ]
@@ -61,15 +62,14 @@ class RemoteStripeTest < Test::Unit::TestCase
     }
     order.transactions = [
       {
-        kind: 'authorization',
+        kind: 'capture',
         status: 'success',
-        amount: 50.0
+        amount: @refund_amount
       }
     ]
-    order.financial_status = 'partially_paid'
+    order.financial_status = 'paid'
     order.save
 
     order
   end
 end
-
