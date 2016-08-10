@@ -12,9 +12,11 @@ module ActiveMerchant #:nodoc:
         requires!(options, :api_key)
         requires!(options, :password)
         requires!(options, :shop_name)
+
         @api_key = options[:api_key]
         @password = options[:password]
         @shop_name = options[:shop_name]
+
         init_shopify_api!
 
         super
@@ -27,8 +29,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def refund(money, transaction_id, options = {})
-        refund = options[:originator]
-        refunder = ShopifyRefunder.new(money, transaction_id, refund)
+        refunder = ShopifyRefunder.new(money, transaction_id, options)
         refunder.perform
       end
 
@@ -55,7 +56,6 @@ class ShopifyVoider
   def perform
     raise ActiveMerchant::Billing::ShopifyGateway::TransactionNotFoundError if transaction.nil?
 
-
     transaction.kind = 'void'
     transaction.save
   end
@@ -66,10 +66,11 @@ class ShopifyVoider
 end
 
 class ShopifyRefunder
-  def initialize(credited_money, transaction_id, refund)
-    @refund = refund
+  def initialize(credited_money, transaction_id, options)
+    @refund_reason = options[:reason]
+    @order_id = options[:order_id]
     @credited_money = BigDecimal.new(credited_money)
-    @transaction = ::ShopifyAPI::Transaction.find(transaction_id, params: { order_id: pos_order_id })
+    @transaction = ::ShopifyAPI::Transaction.find(transaction_id, params: { order_id: order_id })
   end
 
   def perform
@@ -85,21 +86,17 @@ class ShopifyRefunder
   private
 
   def perform_full_refund_on_shopify
-    ::ShopifyAPI::Refund.create({ shipping: { full_refund: true },
-                                  note: refund.reason.name,
-                                  notify: false,
-                                  restock: false,
-                                  transaction: suggested_transaction },
-                                params: { order_id: pos_order_id })
+    ::ShopifyAPI::Refund.create(order_id: order_id,
+                                shipping: { full_refund: true },
+                                note: refund_reason,
+                                notify: false,
+                                restock: false,
+                                transaction: suggested_transaction)
   end
 
   def suggested_transaction
-    ::ShopifyAPI::Refund.calculate({ shipping: { full_refund: true } },
-                                   params: { order_id: pos_order_id })
-  end
-
-  def pos_order_id
-    refund.pos_order_id
+    ::ShopifyAPI::Refund.calculate(shipping: { amount: credited_money },
+                                   params: { order_id: order_id })
   end
 
   def full_refund?
@@ -107,12 +104,12 @@ class ShopifyRefunder
   end
 
   def partial_refund?
-    BigDecimal.new(credit_money) < amount_to_cents(transaction.amount)
+    credited_money < amount_to_cents(transaction.amount)
   end
 
   def amount_to_cents(amount)
-    amount * 100
+    BigDecimal.new(amount) * 100
   end
 
-  attr_accessor :credited_money, :refund, :transaction
+  attr_accessor :credited_money, :refund_reason, :transaction, :order_id
 end
