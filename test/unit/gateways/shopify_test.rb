@@ -18,17 +18,27 @@ class ShopifyTest < Test::Unit::TestCase
   end
 
   def test_refund_with_credit_to_big
-    transaction = stub(amount: 100)
+    transaction = stub(amount: 1)
     ::ShopifyAPI::Transaction.stubs(:find).returns(transaction)
-    assert_raises(::ActiveMerchant::Billing::ShopifyGateway::CreditedAmountBiggerThanTransaction) { @gateway.refund(1000, 123, { order_id: '123', reason: 'reason' }) }
+    assert_raises(::ActiveMerchant::Billing::ShopifyGateway::CreditedAmountBiggerThanTransaction) { @gateway.refund(10000, 123, { order_id: '123', reason: 'reason' }) }
   end
 
-  def test_full_refund
+  def test_response_value_of_unsuccessful_refund
     transaction_id = 123
-    transaction = stub(amount: 100, id: transaction_id)
-    refund = stub(success?: true)
+    transaction = stub(amount: 1, id: transaction_id)
+    refund = stub(errors: [])
     ::ShopifyAPI::Transaction.stubs(:find).returns(transaction)
     ::ShopifyAPI::Refund.stubs(:create).returns(refund)
     assert_success(@gateway.refund(100, transaction_id, { order_id: '123', reason: 'reason' }))
+  end
+
+  def test_reponse_value_of_successful_refund
+    transaction_id = 123
+    transaction = stub(amount: 1, id: transaction_id)
+    errors = stub(messages: { error: 'error1' })
+    refund = stub(errors: errors)
+    ::ShopifyAPI::Transaction.stubs(:find).returns(transaction)
+    ::ShopifyAPI::Refund.stubs(:create).returns(refund)
+    assert_failure(@gateway.refund(100, transaction_id, { order_id: '123', reason: 'reason' }))
   end
 end

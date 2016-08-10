@@ -91,17 +91,24 @@ class ShopifyRefunder
   private
 
   def perform_refund_on_shopify
-    ::ShopifyAPI::Refund.create(order_id: order_id,
-                                shipping: { amount: 0 },
-                                note: refund_reason,
-                                notify: false,
-                                restock: false,
-                                transactions: [{
-                                  parent_id: transaction.id,
-                                  amount: amount_to_dollars(credited_money),
-                                  gateway: 'shopify-payments',
-                                  kind: 'refund'
-                                }])
+    refund = ::ShopifyAPI::Refund.create(order_id: order_id,
+                                         shipping: { amount: 0 },
+                                         note: refund_reason,
+                                         notify: false,
+                                         restock: false,
+                                         transactions: [{
+                                           parent_id: transaction.id,
+                                           amount: amount_to_dollars(credited_money),
+                                           gateway: 'shopify-payments',
+                                           kind: 'refund'
+                                         }])
+
+    success = refund.errors == []
+    if success || refund.errors.messages.empty?
+      ActiveMerchant::Billing::Response.new(true, nil)
+    else
+      ActiveMerchant::Billing::Response.new(success, refund.errors.messages)
+    end
   end
 
   def full_refund?
@@ -113,7 +120,7 @@ class ShopifyRefunder
   end
 
   def amount_to_cents(amount)
-    BigDecimal.new(amount)
+    BigDecimal.new(amount) * 100
   end
 
   def amount_to_dollars(amount)
