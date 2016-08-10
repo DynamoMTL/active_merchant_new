@@ -5,6 +5,7 @@ class RemoteStripeTest < Test::Unit::TestCase
     @gateway = ShopifyGateway.new(fixtures(:shopify))
 
     @refund_amount = 50
+    @refund_amount_in_cents = @refund_amount * 100
     @order = create_fulfilled_paid_shopify_order
     @transaction = ::ShopifyAPI::Order.find(@order.id).transactions.first
 
@@ -16,7 +17,7 @@ class RemoteStripeTest < Test::Unit::TestCase
   end
 
   def test_successful_full_refund
-    assert response = @gateway.refund(@refund_amount, @transaction.id, @options)
+    assert response = @gateway.refund(@refund_amount_in_cents, @transaction.id, @options)
     assert_success response
   end
 

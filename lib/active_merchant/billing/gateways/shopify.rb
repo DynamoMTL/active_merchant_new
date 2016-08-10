@@ -4,6 +4,7 @@ module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     class ShopifyGateway < Gateway
       class TransactionNotFoundError < Error; end
+      class CreditedAmountBiggerThanTransaction < Error; end
 
       self.homepage_url = 'https://shopify.ca/'
       self.display_name = 'Shopify'
@@ -74,6 +75,8 @@ class ShopifyRefunder
   end
 
   def perform
+    raise ActiveMerchant::Billing::ShopifyGateway::TransactionNotFoundError if transaction.nil?
+
     # NOTE(cab): This should be refactored when we are sure that this is the
     # behavior we want
     if full_refund?
@@ -81,7 +84,7 @@ class ShopifyRefunder
     elsif partial_refund?
       perform_refund_on_shopify
     else
-      raise NotImplementedError
+      raise ActiveMerchant::Billing::ShopifyGateway::CreditedAmountBiggerThanTransaction
     end
   end
 
@@ -95,7 +98,7 @@ class ShopifyRefunder
                                 restock: false,
                                 transactions: [{
                                   parent_id: transaction.id,
-                                  amount: @credited_money,
+                                  amount: amount_to_dollars(credited_money),
                                   gateway: 'shopify-payments',
                                   kind: 'refund'
                                 }])
@@ -111,6 +114,10 @@ class ShopifyRefunder
 
   def amount_to_cents(amount)
     BigDecimal.new(amount)
+  end
+
+  def amount_to_dollars(amount)
+    BigDecimal.new(amount) / 100
   end
 
   attr_accessor :credited_money, :refund_reason, :transaction, :order_id
